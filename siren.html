@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수업 준비 알림 타이머 (메모장 포함 버전)</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            padding: 15px;
+            margin: 0;
+            transition: background-color 0.3s;
+            box-sizing: border-box;
+        }
+        /* PC 화면에서는 양옆으로 분할, 모바일에서는 위아래로 정렬 */
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 10px auto;
+        }
+        @media (min-width: 900px) {
+            .main-wrapper {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+        }
+
+        /* [좌측] 타이머 컨테이너 */
+        .container {
+            flex: 1.2;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        /* [우측] 대형 메모장 컨테이너 */
+        .memo-container {
+            flex: 0.8;
+            background: #fff9db; /* 메모지 느낌의 따뜻한 노란색 */
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 8px solid #fab005;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .memo-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #f59f00;
+            margin: 0 0 15px 0;
+            text-align: left;
+        }
+        /* 알림 포인트 글씨용 대형 텍스트 영역 */
+        #memo-area {
+            width: 100%;
+            height: 350px;
+            border: none;
+            background: transparent;
+            font-size: 1.8rem; /* 포인트 글씨 크기 (크고 시원하게 설정) */
+            font-weight: bold;
+            color: #2c3e50;
+            line-height: 1.5;
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+
+        /* 현재 시각 표시 */
+        #current-time {
+            font-size: 11vw;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        @media (min-width: 600px) {
+            #current-time { font-size: 3.8rem; }
+        }
+
+        /* 접고 펼칠 수 있는 설정 영역 */
+        .setting-toggle-btn {
+            background-color: #7f8c8d;
+            font-size: 0.9rem;
+            padding: 8px 14px;
+            margin-bottom: 15px;
+        }
+        .setting-toggle-btn:hover { background-color: #95a5a6; }
+        
+        .notice-box {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px dashed #bdc3c7;
+            box-sizing: border-box;
+        }
+        .notice-box input {
+            width: 90%;
+            padding: 12px;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        
+        /* 제어 버튼 */
+        .control-btns {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 18px;
+            font-size: 1rem;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .add-btn { background-color: #3498db; }
+        .add-btn:hover { background-color: #2980b9; }
+        
+        .test-btn { background-color: #2ecc71; width: 100%; max-width: 250px; }
+        .test-btn:hover { background-color: #27ae60; }
+        
+        .stop-btn { 
+            background-color: #ff7675; 
+            font-size: 1.1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stop-btn:hover { background-color: #ee5253; }
+
+        /* 알람 발령 대형 자막 배너 */
+        #big-banner {
+            display: none;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #d63031;
+            background-color: #ffeaa7;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 3px solid #d63031;
+            line-height: 1.4;
+            word-break: keep-all;
+        }
+
+        /* 24시 선택 드롭다운 */
+        .add-alarm-24h {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 25px;
+        }
+        .add-alarm-24h select {
+            padding: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            background: white;
+            color: #2c3e50;
+        }
+
+        /* 알람 목록 영역 */
+        .alarm-list-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fafafa;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .alarm-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 400px; 
+            overflow-y: auto;
+        }
+        .alarm-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .delete-btn { background-color: #e74c3c; padding: 6px 12px; font-size: 0.9rem;}
+        .delete-btn:hover { background-color: #c0392b; }
+        
+        /* 사이렌 애니메이션 */
+        .flash {
+            animation: blink 0.4s infinite alternate;
+        }
+        @keyframes blink {
+            from { background-color: #f4f7f6; }
+            to { background-color: #ff8787; }
+        }
+        .banner-flash {
+            animation: banner-blink 0.4s infinite alternate;
+        }
+        @keyframes banner-blink {
+            from { transform: scale(1); }
+            to { transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body id="body">
+
+<div class="main-wrapper">
+    
+    <div class="container">
+        <div id="current-time">00:00:00</div>
+        
+        <div class="control-btns">
+            <button class="stop-btn" onclick="stopAlarm()">🚨 알람 정지</button>
+            <button class="setting-toggle-btn" onclick="toggleSetting()">⚙️ 알림 멘트 수정</button>
+        </div>
+
+        <div class="notice-box" id="setting-box" style="display: none;">
+            <input type="text" id="notice-text" value="1분 전입니다. 수업을 준비하세요" placeholder="알림 멘트를 입력하세요."><br>
+            <button class="test-btn" onclick="testSpeaker()">소리 테스트 (멘트2회+30초)</button>
+        </div>
+        
+        <div id="big-banner" class="banner-flash"></div>
+        
+        <hr style="border: 0; height: 1px; background: #eee; margin: 20px 0;">
+
+        <div class="add-alarm-24h">
+            <select id="alarm-hour"></select> 시
+            <select id="alarm-minute"></select> 분
+            <button class="add-btn" onclick="addAlarm24H()">알람 추가</button>
+        </div>
+
+        <div class="alarm-list-container">
+            <h4 style="margin: 5px 0 10px 0; color: #7f8c8d;">설정된 알람 목록 (24H)</h4>
+            <ul id="alarm-list-ul" class="alarm-list"></ul>
+        </div>
+    </div>
+
+    <div class="memo-container">
+        <div class="memo-title">📌 공지 및 메모 사항</div>
+        <textarea id="memo-area" placeholder="여기에 중요한 안내 문구를 작성하세요.&#10;(예: 30초 후 자동으로 꺼지므로 PC에 절대 손대지 마세요!)"></textarea>
+    </div>
+
+</div>
+
+<script>
+    let alarms = JSON.parse(localStorage.getItem('teacherAlarms')) || [];
+    let audioCtx;
+    let activeOscillator = null; 
+    let activeGainNode = null;
+    let alarmTimeout = null;     
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // 기존 알림 멘트 로드
+        const savedNotice = localStorage.getItem('teacherNotice');
+        if (savedNotice) {
+            document.getElementById('notice-text').value = savedNotice;
+        }
+        
+        // ★ [메모장 로드] 기존 메모 불러오기
+        const savedMemo = localStorage.getItem('teacherMemo');
+        if (savedMemo) {
+            document.getElementById('memo-area').value = savedMemo;
+        }
+
+        initSelectOptions(); 
+        renderAlarms();
+        document.body.addEventListener('click', initAudio, { once: true });
+    });
+
+    // 멘트 변경 시 자동 저장
+    document.getElementById('notice-text').addEventListener('input', (e) => {
+        localStorage.setItem('teacherNotice', e.target.value);
+    });
+
+    // ★ [메모장 실시간 저장] 메모 칠 때마다 localstorage에 저장
+    document.getElementById('memo-area').addEventListener('input', (e) => {
+        localStorage.setItem('teacherMemo', e.target.value);
+    });
+
+    function initAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function initSelectOptions() {
+        const hourSelect = document.getElementById('alarm-hour');
+        const minSelect = document.getElementById('alarm-minute');
+        for(let i=0; i<24; i++) { let hr = String(i).padStart(2, '0'); hourSelect.add(new Option(hr, hr)); }
+        for(let i=0; i<60; i++) { let min = String(i).padStart(2, '0'); minSelect.add(new Option(min, min)); }
+    }
+
+    function toggleSetting() {
+        const box = document.getElementById('setting-box');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function startAlarmSequence() {
+        stopAlarm();
+        const msg = document.getElementById('notice-text').value;
+        const banner = document.getElementById('big-banner');
+        
+        banner.innerText = msg;
+        banner.style.display = 'block';
+
+        speakNoticeTwice(() => {
+            document.getElementById('body').classList.add('flash');
+            playAnnoyingSound();
+        });
+    }
+
+    function speakNoticeTwice(onComplete) {
+        const text = document.getElementById('notice-text').value;
+        if (!text) { if (onComplete) onComplete(); return; }
+
+        window.speechSynthesis.cancel(); 
+        const u1 = new SpeechSynthesisUtterance(text);
+        u1.lang = 'ko-KR'; u1.rate = 1.0; u1.pitch = 1.0;
+        const u2 = new SpeechSynthesisUtterance(text);
+        u2.lang = 'ko-KR'; u2.rate = 1.0; u2.pitch = 1.0;
+
+        u2.onend = function() { if (onComplete) onComplete(); };
+        window.speechSynthesis.speak(u1);
+        window.speechSynthesis.speak(u2);
+    }
+
+    // 30초간 거슬리는 경고음 재생 (1차 타협 볼륨 버전 반영)
+    function playAnnoyingSound() {
+        if (!audioCtx) initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const duration = 30; 
+        const frequency = 4000; 
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        
+        for (let i = 0; i < duration * 2; i++) {
+            const time = audioCtx.currentTime + (i * 0.5);
+            gain.gain.linearRampToValueAtTime(i % 2 === 0 ? 0.22 : 0.04, time);
+        }
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        
+        activeOscillator = osc;
+        activeGainNode = gain;
+
+        alarmTimeout = setTimeout(() => {
+            document.getElementById('body').classList.remove('flash');
+            document.getElementById('big-banner').style.display = 'none';
+            stopSound();
+        }, duration * 1000);
+    }
+
+    function stopSound() {
+        if (activeOscillator) { try { activeOscillator.stop(); activeOscillator.disconnect(); } catch(e){} activeOscillator = null; }
+        if (activeGainNode) { try { activeGainNode.disconnect(); } catch(e){} activeGainNode = null; }
+    }
+
+    function stopAlarm() {
+        if (alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; }
+        stopSound();
+        window.speechSynthesis.cancel(); 
+        document.getElementById('body').classList.remove('flash');
+        document.getElementById('big-banner').style.display = 'none';
+    }
+
+    function testSpeaker() { startAlarmSequence(); }
+
+    setInterval(() => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        document.getElementById('current-time').innerText = `${hours}:${minutes}:${seconds}`;
+        
+        if (seconds === "00") {
+            const currentTimeStr = `${hours}:${minutes}`;
+            if (alarms.includes(currentTimeStr)) {
+                startAlarmSequence();
+            }
+        }
+    }, 1000);
+
+    function addAlarm24H() {
+        const h = document.getElementById('alarm-hour').value;
+        const m = document.getElementById('alarm-minute').value;
+        const timeInput = `${h}:${m}`;
+        
+        if (alarms.includes(timeInput)) return alert('이미 등록된 시간입니다.');
+        
+        alarms.push(timeInput);
+        alarms.sort();
+        saveAlarms();
+        renderAlarms();
+    }
+
+    function deleteAlarm(index) {
+        alarms.splice(index, 1);
+        saveAlarms();
+        renderAlarms();
+    }
+
+    function saveAlarms() {
+        localStorage.setItem('teacherAlarms', JSON.stringify(alarms));
+    }
+
+    function renderAlarms() {
+        const ul = document.getElementById('alarm-list-ul');
+        ul.innerHTML = '';
+        alarms.forEach((time, index) => {
+            const li = document.createElement('li');
+            li.className = 'alarm-item';
+            li.innerHTML = `
+                <span style="font-weight: bold; color: #2c3e50; font-size:1.2rem;">${time}</span>
+                <button class="delete-btn" onclick="deleteAlarm(${index})">삭제</button>
+            `;
+            ul.appendChild(li);
+        });
+    }
+</script>
+
+</body>
+</html>
